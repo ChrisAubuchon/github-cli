@@ -1,12 +1,12 @@
 hash: 2b0065dd50fecf72b50b98b7d2d2b1c91628fbf9f7ee73b9cb37772706cfb170
-updated: 2016-09-27T15:27:31.530418423-05:00
+updated: 2016-10-19T16:33:14.760173914-05:00
 imports:
 - name: github.com/golang/protobuf
-  version: 87c000235d3d852c1628dc9490cd21ab36a7d69f
+  version: 98fa357170587e470c5f27d3c3ea0947b71eb455
   subpackages:
   - proto
 - name: github.com/google/go-github
-  version: 94a3cd9f531888fe4a03487276c0adb887428e77
+  version: ed33550bbf49ddffcc36e1309d3f58ed0b6c2305
   subpackages:
   - github
 - name: github.com/google/go-querystring
@@ -16,23 +16,23 @@ imports:
 - name: github.com/inconshreveable/mousetrap
   version: 76626ae9c91c4f2a10f34cad8ce83ea42c93bb75
 - name: github.com/spf13/cobra
-  version: b24564e919247d7c870fe0ed3738c98d8741aca4
+  version: 856b96dcb49d6427babe192998a35190a12c2230
 - name: github.com/spf13/pflag
-  version: 367864438f1b1a3c7db4da06a2f55b144e6784e0
+  version: dabebe21bf790f782ea4c7bbd2efc430de182afd
 - name: github.com/stretchr/testify
   version: 976c720a22c8eb4eb6a0b4348ad85ad12491a506
   subpackages:
   - assert
 - name: golang.org/x/net
-  version: f09c4662a0bd6bd8943ac7b4931e185df9471da4
+  version: 3bafa3320efdf0c95d056586aa9abdd05ad72ee1
   subpackages:
   - context
 - name: golang.org/x/oauth2
-  version: 3c3a985cb79f52a3190fbc056984415ca6763d01
+  version: 1e695b1c8febf17aad3bfa7bf0a819ef94b98ad5
   subpackages:
   - internal
 - name: google.golang.org/appengine
-  version: 8d4efd07a9358ec8c7e75b29387c31a7692db8d2
+  version: 5b8c3b819891014a2d12354528f7d046dd53c89e
   subpackages:
   - internal
   - internal/base
