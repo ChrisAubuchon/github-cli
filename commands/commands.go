@@ -21,6 +21,7 @@ func Init(name, version string) *cobra.Command {
 
 	addPersistentFlags(cmd)
 	cmd.AddCommand(newVersionCommand(name, version))
+	cmd.AddCommand(newBranchCommand())
 	cmd.AddCommand(newRepositoryCommand())
 
 	return cmd
