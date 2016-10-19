@@ -16,12 +16,95 @@ func newRepositoryCommand() *cobra.Command {
 		},
 	}
 
+	cmd.AddCommand(newRepositoryCreateCommand())
+	cmd.AddCommand(newRepositoryDeleteCommand())
+	cmd.AddCommand(newRepositoryEditCommand())
 	cmd.AddCommand(newRepositoryGetCommand())
 	cmd.AddCommand(newRepositoryListCommand())
 
 	return cmd
 }
 
+func newRepositoryCreateCommand() *cobra.Command {
+	cmd := &cobra.Command{
+		Use: "create",
+		Short: 	"Create a new repository",
+		Long: "Create a new repository",
+		RunE: repositoryCreate,
+	}
+
+	cmd.Flags().Bool("auto-init", false, "Create initial commit with empty README")
+	cmd.Flags().String("description", "", "A short description of the repository")
+	cmd.Flags().String("gitignore-template", "", "Desired language or platform .gitignore template to apply")
+	cmd.Flags().String("homepage", "", "A URL with more information about the repository")
+	cmd.Flags().String("license-template", "", "Desired license template to apply")
+	cmd.Flags().String("name", "", "Repository name")
+	cmd.Flags().Bool("no-downloads", false, "Disable downloads for the repository")
+	cmd.Flags().Bool("no-issues", false, "Disable issues on the repository")
+	cmd.Flags().Bool("no-wiki", false, "Disable the wiki for the repository")
+	cmd.Flags().String("org", "", "Organization name")
+	cmd.Flags().Bool("private", false, "Create a private repository")
+	cmd.Flags().Int("team-id", 0, "Id of the team that will be granted access to this repository. Only valid with --org")
+
+	addTemplateFlags(cmd)
+
+	return cmd
+}
+
+func newRepositoryDeleteCommand() *cobra.Command {
+	cmd := &cobra.Command{
+		Use: "delete",
+		Short: 	"Delete a repository",
+		Long: "Delete a repository",
+		RunE: repositoryDelete,
+	}
+
+	addOwnerFlag(cmd)
+	addRepoFlag(cmd)
+
+	return cmd
+}
+
+
+func newRepositoryEditCommand() *cobra.Command {
+	cmd := &cobra.Command{
+		Use: "edit",
+		Short: 	"Update a repository",
+		Long: "Update a repository",
+		RunE: repositoryEdit,
+	}
+
+	addOwnerFlag(cmd)
+	addRepoFlag(cmd)
+	addTemplateFlags(cmd)
+
+	cmd.Flags().String("description", "", "A short description of the repository")
+	cmd.Flags().String("homepage", "", "A URL with more information about the repository")
+	cmd.Flags().String("name", "", "Repository name")
+	cmd.Flags().Bool("no-downloads", false, "Disable downloads for the repository")
+	cmd.Flags().Bool("no-issues", false, "Disable issues on the repository")
+	cmd.Flags().Bool("no-wiki", false, "Disable the wiki for the repository")
+	cmd.Flags().Bool("private", false, "Create a private repository")
+	cmd.Flags().String("default-branch", "", "Updates the default branch for the repository")
+
+	return cmd
+}
+	
+
+func newRepositoryGetCommand() *cobra.Command {
+	cmd := &cobra.Command{
+		Use: "get",
+		Short: "Get fetches a repository",
+		Long: "Get fetches a repository",
+		RunE: repositoryGet,
+	}
+
+	addOwnerFlag(cmd)
+	addRepoFlag(cmd)
+	addTemplateFlags(cmd)
+
+	return cmd
+}
 func newRepositoryListCommand() *cobra.Command {
 	cmd := &cobra.Command{
 		Use: "list",
@@ -73,10 +156,6 @@ func newRepositoryListCommand() *cobra.Command {
 	cmd.AddCommand(newRepositoryListLanguages())
 	cmd.AddCommand(newRepositoryListTags())
 	cmd.AddCommand(newRepositoryListTeams())
-//	cmd.AddCommand(newRepositoryListBranches())
-//	cmd.AddCommand(newRepositoryListCollaborators())
-//	cmd.AddCommand(newRepositoryListComments())
-//	cmd.AddCommand(newRepositoryListReleases())
 
 	return cmd
 }
@@ -226,6 +305,185 @@ func newRepositoryListTeams() *cobra.Command {
 //
 //	return cmd
 //}
+
+func repositoryCreate(cmd *cobra.Command, args []string) error {
+	client, err := newClient(cmd)
+	if err != nil {
+		return err
+	}
+
+	if err := validateFlagsNotEmpty(cmd, "name"); err != nil {
+		return err
+	}
+
+	r := new(github.Repository)
+	if getFlagBool(cmd, "auto-init") {
+		r.AutoInit = new(bool)
+		*r.AutoInit = true
+	}
+
+	if desc := getFlagString(cmd, "description"); desc != "" {
+		r.Description = new(string)
+		*r.Description = desc
+	}
+
+	if gt := getFlagString(cmd, "gitignore-template"); gt != "" {
+		r.GitignoreTemplate = new(string)
+		*r.GitignoreTemplate = gt
+	}
+
+	if h := getFlagString(cmd, "homepage"); h != "" {
+		r.Homepage = new(string)
+		*r.Homepage = h
+	}
+
+	if getFlagBool(cmd, "no-downloads") {
+		r.HasDownloads = new(bool)
+		*r.HasDownloads = false
+	}
+
+	if getFlagBool(cmd, "no-issues") {
+		r.HasIssues = new(bool)
+		*r.HasIssues = false
+	}
+
+	if getFlagBool(cmd, "no-wiki") {
+		r.HasWiki = new(bool)
+		*r.HasWiki = false
+	}
+
+	if h := getFlagString(cmd, "homepage"); h != "" {
+		r.Homepage = new(string)
+		*r.Homepage = h
+	}
+
+	if lt := getFlagString(cmd, "license-template"); lt != "" {
+		r.LicenseTemplate = new(string)
+		*r.LicenseTemplate = lt
+	}
+
+	if getFlagBool(cmd, "private") {
+		r.Private = new(bool)
+		*r.Private = true
+	}
+
+	if i := getFlagInt(cmd, "team-id"); i != 0 {
+		r.TeamID = new(int)
+		*r.TeamID = i
+	}
+
+	r.Name = new(string)
+	*r.Name = getFlagString(cmd, "name")
+
+	repo, _, err := client.Repositories.Create(getFlagString(cmd, "org"), r)
+	if err != nil {
+		return err
+	}
+
+	return output(cmd, repo)
+}
+
+func repositoryDelete(cmd *cobra.Command, args []string) error {
+	client, err := newClient(cmd)
+	if err != nil {
+		return err
+	}
+
+	if err := validateFlagsNotEmpty(cmd, "owner", "repo"); err != nil {
+		return err
+	}
+
+	if _, err := client.Repositories.Delete(
+		getFlagString(cmd, "owner"),
+		getFlagString(cmd, "repo"),
+	); err != nil {
+		return err
+	}
+
+	return nil
+}
+
+func repositoryEdit(cmd *cobra.Command, args []string) error {
+	client, err := newClient(cmd)
+	if err != nil {
+		return err
+	}
+
+	if err := validateFlagsNotEmpty(cmd, "owner", "repo", "name"); err != nil {
+		return err
+	}
+
+	r := new(github.Repository)
+	if d := getFlagString(cmd, "default-branch"); d != "" {
+		r.DefaultBranch = new(string)
+		*r.DefaultBranch = d
+	}
+
+	if desc := getFlagString(cmd, "description"); desc != "" {
+		r.Description = new(string)
+		*r.Description = desc
+	}
+
+	if h := getFlagString(cmd, "homepage"); h != "" {
+		r.Homepage = new(string)
+		*r.Homepage = h
+	}
+
+	if getFlagBool(cmd, "no-downloads") {
+		r.HasDownloads = new(bool)
+		*r.HasDownloads = false
+	}
+
+	if getFlagBool(cmd, "no-issues") {
+		r.HasIssues = new(bool)
+		*r.HasIssues = false
+	}
+
+	if getFlagBool(cmd, "no-wiki") {
+		r.HasWiki = new(bool)
+		*r.HasWiki = false
+	}
+
+	if getFlagBool(cmd, "private") {
+		r.Private = new(bool)
+		*r.Private = true
+	}
+
+	r.Name = new(string)
+	*r.Name = getFlagString(cmd, "name")
+
+	repo, _, err := client.Repositories.Edit(
+		getFlagString(cmd, "owner"),
+		getFlagString(cmd, "repo"),
+		r,
+	)
+	if err != nil {
+		return err
+	}
+
+	return output(cmd, repo)
+}
+
+func repositoryGet(cmd *cobra.Command, args []string) error {
+	client, err := newClient(cmd)
+	if err != nil {
+		return err
+	}
+
+	if err := validateFlagsNotEmpty(cmd, "owner", "repo"); err != nil {
+		return err
+	}
+
+	repo, _, err := client.Repositories.Get(
+		getFlagString(cmd, "owner"),
+		getFlagString(cmd, "repo"),
+		)
+	if err != nil {
+		return err
+	}
+
+	return output(cmd, repo)
+}
 
 func repositoryList(cmd *cobra.Command, args []string) error {
 	client, err := newClient(cmd)
@@ -450,20 +708,6 @@ func repositoryListReleases(cmd *cobra.Command, args []string) error {
 	return output(cmd, release)
 }
 
-func newRepositoryGetCommand() *cobra.Command {
-	cmd := &cobra.Command{
-		Use: "get",
-		Short: "Get fetches a repository",
-		Long: "Get fetches a repository",
-		RunE: repositoryGet,
-	}
-
-	addOwnerFlag(cmd)
-	addRepoFlag(cmd)
-	addTemplateFlags(cmd)
-
-	return cmd
-}
 
 //func newRepositoryGetRelease() *cobra.Command {
 //	cmd := &cobra.Command{
@@ -480,27 +724,6 @@ func newRepositoryGetCommand() *cobra.Command {
 //
 //	return cmd
 //}
-
-func repositoryGet(cmd *cobra.Command, args []string) error {
-	client, err := newClient(cmd)
-	if err != nil {
-		return err
-	}
-
-	if err := validateFlagsNotEmpty(cmd, "owner", "repo"); err != nil {
-		return err
-	}
-
-	repo, _, err := client.Repositories.Get(
-		getFlagString(cmd, "owner"),
-		getFlagString(cmd, "repo"),
-		)
-	if err != nil {
-		return err
-	}
-
-	return output(cmd, repo)
-}
 
 func repositoryGetRelease(cmd *cobra.Command, args []string) error {
 	var err error
